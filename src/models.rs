@@ -6,7 +6,7 @@ use std::hash::Hash;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Product {
-    id: i32,
+    pub(crate) id: i32,
     uid: String,
     category: String,
     sub_category: String,

@@ -57,9 +57,9 @@ pub fn get_products(
         p
     };
 
-    let (limit, offset) = ((p - 1) * l, p * l);
+    let offset = (p - 1) * l;
 
-    let query = format!("SELECT * FROM products LIMIT {} OFFSET {}", offset, limit);
+    let query = format!("SELECT * FROM products LIMIT {} OFFSET {}", l, offset);
     let statement = conn.prepare(query).unwrap();
 
     let mut raw_vec_map = statement_to_vec_map(statement);
