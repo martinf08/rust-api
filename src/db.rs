@@ -1,7 +1,13 @@
+use crate::api::Pagination;
 use crate::models::Product;
+
+use actix_web::web::Query;
 use r2d2_sqlite3::SqliteConnectionManager;
 use sqlite3::{Statement, Value};
 use std::collections::HashMap;
+
+pub const DEFAULT_PAGE: i32 = 1;
+pub const DEFAULT_LIMIT: i32 = 10;
 
 pub type Pool = r2d2::Pool<SqliteConnectionManager>;
 pub type Connection = r2d2::PooledConnection<SqliteConnectionManager>;
@@ -13,8 +19,48 @@ pub fn create_pool() -> Pool {
     return pool;
 }
 
-pub fn get_products(conn: Connection) -> Vec<Product> {
-    let statement = conn.prepare("SELECT * FROM 'products' LIMIT 0,30").unwrap();
+pub fn get_products(
+    conn: Connection,
+    Query(Pagination { page, limit }): Query<Pagination>,
+) -> Vec<Product> {
+    let (p, l) = match (page, limit) {
+        (Some(p), Some(l)) => (p, l),
+        (Some(p), None) => (p, self::DEFAULT_LIMIT),
+        (None, Some(l)) => (self::DEFAULT_PAGE, l),
+        (None, None) => (self::DEFAULT_PAGE, self::DEFAULT_LIMIT),
+    };
+
+    let mut count = 0;
+    conn.iterate("SELECT COUNT(*) FROM products", |pair| {
+        let &(_, val) = pair.into_iter().next().unwrap();
+        count = val.unwrap().parse::<i32>().unwrap();
+        true
+    })
+    .unwrap();
+
+    if count == 0 {
+        return Vec::new();
+    }
+
+    let l = if l > 50 || l <= 0 {
+        self::DEFAULT_LIMIT
+    } else {
+        l
+    };
+
+    let last_page = (count as f64 / l as f64).floor() as i32;
+    let p = if p <= 0 {
+        self::DEFAULT_PAGE
+    } else if p > last_page {
+        last_page
+    } else {
+        p
+    };
+
+    let offset = (p - 1) * l;
+
+    let query = format!("SELECT * FROM products LIMIT {} OFFSET {}", l, offset);
+    let statement = conn.prepare(query).unwrap();
 
     let mut raw_vec_map = statement_to_vec_map(statement);
 
