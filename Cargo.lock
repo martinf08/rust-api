@@ -307,7 +307,6 @@ dependencies = [
  "actix-web",
  "env_logger",
  "futures",
- "lazy_static",
  "r2d2",
  "r2d2-sqlite3",
  "serde",
